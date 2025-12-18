@@ -21,11 +21,11 @@ class ConnectionManager extends EventEmitter {
             peer.on("data", (data)=>{
                 const msg = JSON.parse(data.toString());
                 if (msg.type == "handshake") {
-                    this.connections.set(, socket);
+                  
 
                     const serverHandshake = JSON.stringify({
                         type: "handshake",
-                        peerId: this.id,
+                        localId: this.id,
                         host: this.host,
                         port: this.port
                     })

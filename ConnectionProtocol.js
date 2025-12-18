@@ -1,11 +1,12 @@
 const EventEmitter = require("events");
 
 class ConnectionProtocol extends EventEmitter {
-    constructor(peer, options) {
+    constructor(peer, localId) {
         super();
-        this.options = options;
-        this.state = "INIT";
         this.peer = peer;
+        this.localId = localId;
+        this.state = "INIT";
+
     }
 
     onMessage(rawMsg) {
@@ -13,15 +14,17 @@ class ConnectionProtocol extends EventEmitter {
         if (msg.type == "handshake") {
             this.state = "HANDSHAKING";
             this.emit(this.state);
+            this.handleHandshake(msg);
 
         }
     }
 
     handleHandshake(msg) {
+        if (this.state !== "HANDSHAKING") return;
         this.peer.remotePeerId = msg.peerId;
         this.state = "READY";
         this.sendHandshake();
-
+        
 
         
     }
@@ -29,14 +32,23 @@ class ConnectionProtocol extends EventEmitter {
     sendHandshake() {
         const handshake = {
             type: "handshake",
-            peerId: this.peer.remotePeerId,
-            socket: this.peer.socket
-
+            peerId: this.localId,
         }
         this.emit("handshake-sent", handshake);
     }
 
-    sendMessage() {
+    sendMessage(type, payload) {
+        if (this.state !== READY) {
+            throw new Error("Protocol not ready");
+        }
+
+        const msg = JSON.stringify({
+            type,
+            payload
+        })
+
+        this.peer.sendMessage(msg);
+
 
     }
 }
