@@ -7,6 +7,8 @@ class ConnectionProtocol extends EventEmitter {
         this.localId = localId;
         this.state = "INIT";
 
+        this.peer.on("message", raw => this.onMessage(raw));
+
     }
 
     onMessage(rawMsg) {
