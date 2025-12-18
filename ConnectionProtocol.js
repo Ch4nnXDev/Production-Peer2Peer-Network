@@ -9,8 +9,8 @@ class ConnectionProtocol extends EventEmitter {
     }
 
     onMessage(rawMsg) {
-        const fmsg = rawMsg.toString();
-        if (fmsg.type == "handshake") {
+        const msg = JSON.parse(rawMsg.toString());
+        if (msg.type == "handshake") {
             this.state = "HANDSHAKING";
             this.emit(this.state);
 
