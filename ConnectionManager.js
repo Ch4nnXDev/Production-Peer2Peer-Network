@@ -1,61 +1,68 @@
 const net = require('net');
 const { EventEmitter } = require('events');
 const Peer = require("./Peer");
-const crypto = require("crypto");
+const ConnectionProtocol = require("./ConnectionProtocol");
+
 
 class ConnectionManager extends EventEmitter {
-    constructor(localId) {
+    constructor(localId, port) {
         super();
         this.localId = localId;
         this.connections = new Map();
         this.knownPeers = new Map();
-        this.server = null;
+        this.port = port
+
     }
 
     startServer() {
         this.server = net.createServer((socket)=> {
             const peer = new Peer(socket);
-            peer.socket = socket;
+            const protocol = new ConnectionProtocol(peer, this.localId);
+            protocol.on("ready", peer => {
+                this.connections.set(peer.remotePeerId, peer);
+                this.knownPeers.set(peer.remotePeerId, {host: socket.remoteAddress, port: socket.remotePort});
+
+            });
+
+            protocol.on("message-received", (msg) => {
+
+                this.emit("message-received", msg, peer);
+
+             });
         
 
-            peer.on("data", (data)=>{
-                const msg = JSON.parse(data.toString());
-                if (msg.type == "handshake") {
-                  
-
-                    const serverHandshake = JSON.stringify({
-                        type: "handshake",
-                        localId: this.id,
-                        host: this.host,
-                        port: this.port
-                    })
-                    socket.write(serverHandshake);
-                } else {
-                    socket.write(data.toString());
-                    this.emit("message-recevied", data.toString());
-                }
-            })
+           
 
         })
-        this.server.listen(this.port);
+        this.server.listen(this.port, () => console.log(`Server listening on port ${this.port}`));
 
     };
     addPeer(host, port) {
-        const peer = new Peer(host, port);
-        peer.on("handshake-received", (msg)=> {
-            this.connections.set(msg.peerId, peer.socket);
-            this.knownPeers.set(msg.peerId, {host: msg.host, port: msg.port})
-        })
-        peer.connect(host, port);
+        const socket = net.connect(host, port);
+        const peer = new Peer(socket);
+        const protocol = new ConnectionProtocol(peer, this.localId);
+        protocol.sendHandshake();
+        protocol.on("ready", (peer) => {
 
+            this.connections.set(peer.remotePeerId, peer);
+            this.knownPeers.set(peer.remotePeerId, { host, port });
+            this.emit("peer-connected", peer);
+    });
 
+        protocol.on("message-received", (msg) => {
+            this.emit("message-received", msg, peer);
+        });
 
     };
+
+    
     removePeer(id) {
         if (this.knownPeers.get(id)) {
             this.knownPeers.delete(id);
         }
     };
+
+
     getknownPeers() {
         if (this.knownPeers.size != 0) {
             this.knownPeers.forEach((value, key)=> {
@@ -63,6 +70,8 @@ class ConnectionManager extends EventEmitter {
             })
         }
     };
+
+
     getConnections() {
         if (this.connections.size != 0) {
             this.connections.forEach((value, key)=> {

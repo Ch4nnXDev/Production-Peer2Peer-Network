@@ -12,20 +12,29 @@ class ConnectionProtocol extends EventEmitter {
     }
 
     onMessage(rawMsg) {
-        const msg = JSON.parse(rawMsg.toString());
-        if (msg.type == "handshake") {
-            this.state = "HANDSHAKING";
-            this.emit(this.state);
-            this.handleHandshake(msg);
+        let msg;
+        try {
+            msg = JSON.parse(rawMsg.toString());
+        } catch (e) {
+            this.emit("error", new Error("Invalid message JSON"));
+            return;
+        }
 
+        if (msg.type === "handshake") {
+            this.handleHandshake(msg);
+        } else {
+            this.emit("message-received", msg);
         }
     }
 
+
     handleHandshake(msg) {
-        if (this.state !== "HANDSHAKING") return;
+        if (this.state !== "INIT") return;
         this.peer.remotePeerId = msg.peerId;
-        this.state = "READY";
         this.sendHandshake();
+        this.state = "READY";
+        
+        this.emit("ready", this.peer);
         
 
         
@@ -36,19 +45,17 @@ class ConnectionProtocol extends EventEmitter {
             type: "handshake",
             peerId: this.localId,
         }
+        this.peer.sendMessage(JSON.stringify(handshake));
         this.emit("handshake-sent", handshake);
     }
 
     sendMessage(type, payload) {
-        if (this.state !== READY) {
+        if (this.state !== "READY") {
             throw new Error("Protocol not ready");
         }
 
-        const msg = JSON.stringify({
-            type,
-            payload
-        })
 
+        const msg = JSON.stringify({ type, payload });
         this.peer.sendMessage(msg);
 
 

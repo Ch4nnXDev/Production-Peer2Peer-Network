@@ -43,7 +43,7 @@ class Peer extends EventEmitter {
 
             if (fmsg.length === 0) continue;
     
-            this.emit("raw-message-received", fmsg);
+            this.emit("message", fmsg);
         }
         
         
@@ -53,10 +53,9 @@ class Peer extends EventEmitter {
     sendMessage(message) {
         if (this.socket) {
             this.socket.write(message + "\n");
-            this.emit("message", message);
 
         } else {
-            return false;
+            throw new Error("No Socket Detected");
         }
         
     }
