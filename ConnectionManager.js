@@ -10,7 +10,7 @@ class ConnectionManager extends EventEmitter {
         this.localId = localId;
         this.connections = new Map();
         this.knownPeers = new Map();
-        this.port = port
+        this.port = port;
 
     }
 

@@ -1,4 +1,5 @@
 const EventEmitter = require("events");
+const Module = require("module");
 
 class ConnectionProtocol extends EventEmitter {
     constructor(peer, localId) {
@@ -67,3 +68,5 @@ class ConnectionProtocol extends EventEmitter {
 
     }
 }
+
+module.exports = ConnectionProtocol;
