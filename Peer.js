@@ -10,6 +10,7 @@ class Peer extends EventEmitter {
         this.socket = socket;
         this.state = "INIT";
         this.buffer = "";
+        this.remoteListenPort = null;
         this.setupSocket();
 
     }

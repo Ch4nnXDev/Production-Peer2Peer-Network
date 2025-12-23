@@ -18,11 +18,27 @@ class ConnectionManager extends EventEmitter {
         this.server = net.createServer((socket)=> {
             const peer = new Peer(socket);
             const protocol = new ConnectionProtocol(peer, this.localId);
+            protocol.sendHandshake();
             protocol.on("ready", peer => {
+                if (this.connections.has(peer.remotePeerId)) {
+                    this.connections.get(peer.remotePeerId).socket.destroy();
+                }
                 this.connections.set(peer.remotePeerId, peer);
-                this.knownPeers.set(peer.remotePeerId, {host: socket.remoteAddress, port: socket.remotePort});
+                this.knownPeers.set(peer.remotePeerId, {host: socket.remoteAddress, port: peer.remoteListenPort});
 
             });
+            peer.on("disconnected", () => {
+                if (peer.remotePeerId) {
+                    this.connections.delete(peer.remotePeerId);
+                    this.knownPeers.delete(peer.remotePeerId);
+                }
+            });
+            protocol.on("error", err => {
+                console.error("Protocol error:", err.message);
+                peer.socket.destroy();
+            });
+
+
 
             protocol.on("message-received", (msg) => {
 
@@ -44,10 +60,29 @@ class ConnectionManager extends EventEmitter {
         protocol.sendHandshake();
         protocol.on("ready", (peer) => {
 
+            if (this.connections.has(peer.remotePeerId)) {
+                this.connections.get(peer.remotePeerId).socket.destroy();
+            }
+
             this.connections.set(peer.remotePeerId, peer);
-            this.knownPeers.set(peer.remotePeerId, { host, port });
+
+            this.knownPeers.set(peer.remotePeerId, { host, port: peer.remoteListenPort });
             this.emit("peer-connected", peer);
-    });
+        });
+
+        peer.on("disconnected", () => {
+            if (peer.remotePeerId) {
+                this.connections.delete(peer.remotePeerId);
+                this.knownPeers.delete(peer.remotePeerId);
+            }
+        });
+        
+        protocol.on("error", err => {
+            console.error("Protocol error:", err.message);
+            peer.socket.destroy();
+        });
+
+
 
         protocol.on("message-received", (msg) => {
             this.emit("message-received", msg, peer);

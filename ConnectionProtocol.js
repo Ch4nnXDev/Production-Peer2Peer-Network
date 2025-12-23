@@ -6,6 +6,7 @@ class ConnectionProtocol extends EventEmitter {
         this.peer = peer;
         this.localId = localId;
         this.state = "INIT";
+        this.handshakeSent = false;
 
         this.peer.on("message", raw => this.onMessage(raw));
 
@@ -29,9 +30,12 @@ class ConnectionProtocol extends EventEmitter {
 
 
     handleHandshake(msg) {
-        if (this.state !== "INIT") return;
+        if (this.state === "READY") return;
         this.peer.remotePeerId = msg.peerId;
-        this.sendHandshake();
+        this.peer.remoteListenPort = msg.listenPort;
+        if (!this.handshakeSent) {
+            this.sendHandshake();
+        }
         this.state = "READY";
         
         this.emit("ready", this.peer);
@@ -44,7 +48,9 @@ class ConnectionProtocol extends EventEmitter {
         const handshake = {
             type: "handshake",
             peerId: this.localId,
+            listenPort: this.peer.socket.localPort
         }
+        this.handshakeSent = true;
         this.peer.sendMessage(JSON.stringify(handshake));
         this.emit("handshake-sent", handshake);
     }
